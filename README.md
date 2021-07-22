@@ -58,11 +58,11 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
 
 # 분석/설계
 
-1. Event Storming 모델
+**1. Event Storming 모델**
 
 ![ESM](https://github.com/bbibbo55/GotoHotel/blob/main/ESM.PNG)
 
-2. 핵사고날 아키텍처 다이어그램 도출
+**2. 핵사고날 아키텍처 다이어그램 도출**
 
 ![Kafka](https://github.com/bbibbo55/GotoHotel/blob/main/kafka.png)
 
