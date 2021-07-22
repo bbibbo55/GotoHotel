@@ -9,7 +9,7 @@ AWS_Intensive Coursework 3차수 Personal Project
   - 서비스 시나리오
   - 분석/설계
   - 구현
-    + [DDD의 적용]
+    + DDD의 적용
     + 폴리글랏 퍼시스턴스
     + 폴리글랏 프로그래밍
     + Correlation
