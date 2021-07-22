@@ -1,6 +1,7 @@
 # GotoHotel
 AWS_Intensive Coursework 3차수 Personal Project
 
+---
 
 # Table of contents
 
@@ -21,7 +22,7 @@ AWS_Intensive Coursework 3차수 Personal Project
     + 동기식 호출
     + Circuit Breaker
     + 오토스케일 아웃
-    + [무정지 재배포(Readiness Probe)](#무정지 재배포)
+    + [무정지 재배포(Readiness Probe)](무정지 재배포)
     + Self Healing(Liveness Probe)
     + ConfigMap
     + Persistence Volume 
