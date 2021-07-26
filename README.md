@@ -124,7 +124,7 @@ Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  targ
 
 **DDD 적용**
   - 각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다.
-  - order 마이크로서비스를 예로 들어본다.
+  - pay 마이크로서비스를 예로 들어본다.
 ```
 package gotohotel;
 
@@ -143,7 +143,6 @@ public class Order {
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private String orderId;
     private String name;
     private String roomType;
     private Integer guestCnt;
@@ -192,14 +191,6 @@ public class Order {
 
     public void setId(Long id) {
         this.id = id;
-    }
-    
-    public String getOrderId() {
-        return orderId;
-    }
-
-    public void setOrderId(String orderId) {
-        this.orderId = orderId;
     }
 
     public String getName() {
