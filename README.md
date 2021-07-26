@@ -119,7 +119,7 @@ Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  targ
 ]root@labs-1603723474:/home/project/customerCenter# mvn spring-boot:run
 
 ```
-
+ 
 * **DDD 적용**
   - 각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다.
   - order 마이크로서비스를 예로 들어본다.
