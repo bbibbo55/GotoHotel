@@ -12,20 +12,22 @@ AWS_Intensive Coursework 3차수 Personal Project
     + DDD의 적용
     + 폴리글랏 퍼시스턴스
     + 폴리글랏 프로그래밍
+    + Saga
+    + CQRS
     + Correlation
-    + 동기식 호출과 Fallback 처리 
-    + 비동기식 호출과 Eventual Consistency
+    + 동기식 호출과 Fallback 처리
     + API Gateway
-    + SAGA-CQRS
+    + 비동기식 호출과 Eventual Consistency   
+ 
   - 운영
     + 컨테이너 이미지 생성 및 배포
     + 동기식 호출
     + Circuit Breaker
-    + 오토스케일 아웃
-    + [무정지 재배포(Readiness Probe)](무정지 재배포)
+    + Autoscale (HPA)
+    + Configmap or Persistence Volume
+    + Polyglot
+    + Zero-downtime deploy (Readiness Probe)
     + Self Healing(Liveness Probe)
-    + ConfigMap
-    + Persistence Volume 
 
 # 시나리오
 GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 다음과 같습니다.   
