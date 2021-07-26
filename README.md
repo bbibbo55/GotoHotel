@@ -99,6 +99,7 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
             - Path= /mypages/**
       globalcors:
         corsConfigurations:
-'''        
+        
+'''
 
 
