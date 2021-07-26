@@ -5,17 +5,15 @@ AWS_Intensive Coursework 3차수 Personal Project
 
 # Table of contents
 
-* **호텔 예약**
+* **GotoHetel 예약**
   - 서비스 시나리오
   - 분석/설계
   - 구현
-    + 포트넘버 
+    + 포트넘버 분리
     + DDD의 적용
     + 폴리글랏 퍼시스턴스
-    + 폴리글랏 프로그래밍
     + Saga
     + CQRS
-    + Correlation
     + 동기식 호출과 Fallback 처리
     + API Gateway
     + 비동기식 호출과 Eventual Consistency   
@@ -74,7 +72,7 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
 분석/설계 단계에서 도출된 헥사고날 아키텍처를 적용하여 각 BC별도 대변되는 마이크로서비스들을 Spring-boot 로 구현한다.   
 각 서비스 별로 부여된 포트넘버를 확인한다. (8001 ~ 8004)
 
-**포트넘버 분리**
+* **포트넘버 분리**
 
 ```C
 spring:
@@ -122,9 +120,9 @@ Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  targ
 
 ```
 
-**DDD 적용**
+* **DDD 적용**
   - 각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다.
-  - pay 마이크로서비스를 예로 들어본다.
+  - order 마이크로서비스를 예로 들어본다.
 ```
 package gotohotel;
 
@@ -240,5 +238,314 @@ public class Order {
 
 ```
 # order 서비스 주문처리
+http localhost:8081/orders name=Moonhee roomType=delux
+
+# pay 서비스 결제처리
+http localhost:8083/payments orderId=1 cardNo=12345
+
+# 선택한 room order에 대한 예약처리
+http localhost:8082/reservations orderId=1 status="confirmed"
+
+# 주문 상태 확인
+http localhost:8081/orders/3
+
+HTTP/1.1 200 
+Content-Type: application/hal+json;charset=UTF-8
+Date: Mon, 26 Jul 2021 08:10:29 GMT
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "order": {
+            "href": "http://localhost:8081/orders/1"
+        },
+        "self": {
+            "href": "http://localhost:8081/orders/1"
+        }
+    },
+    "name: "Moonhee",
+    "roomType": "delux",
+    "status": "confirmed"
+    "guestCnt": null,
+    "cardNo": null,
+}
+```
+
+* **폴리글랏 퍼시스턴스**
+
+비지니스 로직은 내부에 순수한 형태로 구현하며,   
+그 이외의 것을 어댑터 형식으로 설계하여 해당 비지니스 로직이 어떤 환경에서도 잘 동작하도록 설계한다.   
+
+폴리그랏 퍼시스턴스 조건을 만족하기 위해 기존 h2 DB를 hsqldb로 변경하여 동작시킨다.
 
 ```
+<!--	<dependency> -->
+<!--		<groupId>com.h2database</groupId> -->
+<!--		<artifactId>h2</artifactId> -->
+<!--		<scope>runtime</scope> -->
+<!--	</dependency> -->
+
+		  <dependency>
+			  <groupId>org.hsqldb</groupId>
+			  <artifactId>hsqldb</artifactId>
+			  <version>2.4.0</version>
+			  <scope>runtime</scope>
+		  </dependency>
+```
+
+**reservation의 pom.yml 파일 내 DB 정보 변경 및 재기동 후 예약 처리**
+
+```
+]root@labs-1603723474:/home/project# http localhost:8082/reservations orderId=2 status=DBchanged
+HTTP/1.1 201 
+Content-Type: application/json;charset=UTF-8
+Date: Mon, 26 Jul 2021 08:42:05 GMT
+Location: http://localhost:8082/reservations/1
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "reservation": {
+            "href": "http://localhost:8082/reservations/1"
+        },
+        "self": {
+            "href": "http://localhost:8082/reservations/1"
+        }
+    },
+    "orderId": 2,
+    "status": "DBchanged"
+}
+```
+
+**Mypage에서 예약이 잘 되었는지 조회**
+    
+```
+]root@labs-1603723474:/home/project# http localhost:8084/mypages/2
+HTTP/1.1 200 
+Content-Type: application/hal+json;charset=UTF-8
+Date: Mon, 26 Jul 2021 08:43:04 GMT
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "mypage": {
+            "href": "http://localhost:8084/mypages/2"
+        },
+        "self": {
+            "href": "http://localhost:8084/mypages/2"
+        }
+    },
+    "guestCnt": null,
+    "name": null,
+    "orderId": 2,
+    "roomType": "delux",
+    "status": "DBchanged"
+}
+```
+* **CQRS(마이페이지)**
+
+고객이 예약한 건에 대해 예약/결제 상태를 조회할 수 있도록 CQRS로 구현하였으며,   
+Mypage를 통해 모든 예약건에 대한 등록/변경 상태정보를 확인 할 수 잇다. 
+
+```
+# 예약 상태를 MyPage 호출하여 확인
+
+]root@labs-1603723474:/home/project# http localhost:8084/mypages/
+HTTP/1.1 200 
+Content-Type: application/hal+json;charset=UTF-8
+Date: Mon, 26 Jul 2021 09:01:21 GMT
+Transfer-Encoding: chunked
+
+{
+    "_embedded": {
+        "mypages": [
+            {
+                "_links": {
+                    "mypage": {
+                        "href": "http://localhost:8084/mypages/1"
+                    },
+                    "self": {
+                        "href": "http://localhost:8084/mypages/1"
+                    }
+                },
+                "guestCnt": null,
+                "name": "Moonhee",
+                "orderId": 1,
+                "roomType": null,
+                "status": "confirmed"
+            },
+            {
+                "_links": {
+                    "mypage": {
+                        "href": "http://localhost:8084/mypages/2"
+                    },
+                    "self": {
+                        "href": "http://localhost:8084/mypages/2"
+                    }
+                },
+                "guestCnt": 2,
+                "name": HaHa,
+                "orderId": 2,
+                "roomType": "delux",
+                "status": "DBchanged"
+            },
+            {
+                "_links": {
+                    "mypage": {
+                        "href": "http://localhost:8084/mypages/3"
+                    },
+                    "self": {
+                        "href": "http://localhost:8084/mypages/3"
+                    }
+                },
+                "guestCnt": 2,
+                "name": "Woojin",
+                "orderId": 3,
+                "roomType": "childRoom",
+                "status": "Complete"
+            }
+        ]
+    },
+    "_links": {
+        "profile": {
+            "href": "http://localhost:8084/profile/mypages"
+        },
+        "search": {
+            "href": "http://localhost:8084/mypages/search"
+        },
+        "self": {
+            "href": "http://localhost:8084/mypages/"
+        }
+    }
+}
+```
+
+* **동기식 호출과 Fallback처리**
+
+분석단계의 조건 중 하나로, 예약주문 시 주문과 결제 처리를 동기식으로 처리하는 요구사항을 만족한다. 
+주문(Order)->결제(Pay) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하며,   
+호출 프로토콜은 REST Repositor에 의해 노출되어 있는 REST 서비스를 FeignClient를 이용하여 호출한다.   
+
+##### 결제서비스를 호출하기 위해 FeignClient를 이용하여 Service 대행 인터페이스(Proxy)를 구현
+
+```
+#(external) PaymentService.java
+
+package gotohotel.external;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+
+@FeignClient(name="pay", url="${api.payment.url}")
+public interface PaymentService {
+    @RequestMapping(method= RequestMethod.POST, path="/payments")
+    public void processPayment(@RequestBody Payment payment);
+
+}
+```
+##### 주문 받은 직후(@PostPersist) 결제를 요청하여 처리
+
+```
+# Order.java (Entity)
+    @PostPersist
+    public void onPostPersist(){
+        Ordered ordered = new Ordered();
+        BeanUtils.copyProperties(this, ordered);
+        ordered.publishAfterCommit();
+
+        gotohotel.external.Payment payment = new gotohotel.external.Payment();
+        System.out.println("this.id() : " + this.id);
+        payment.setOrderId(this.id);
+        payment.setStatus("Reservation OK");
+        OrderApplication.applicationContext.getBean(gotohotel.external.PaymentService.class)
+            .processPayment(payment);
+
+    }
+
+```
+
+##### 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문을 받을 수 없음을 확인
+```
+# 결제(payment) 서비스를 잠시 내려놓음
+
+# 주문처리
+]root@labs-16037http localhost:8081/orders name=Guest2 roomType=Normal
+HTTP/1.1 500 
+Connection: close
+Content-Type: application/json;charset=UTF-8
+Date: Mon, 26 Jul 2021 09:52:02 GMT
+Transfer-Encoding: chunked
+
+{
+    "error": "Internal Server Error",
+    "message": "Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction",
+    "path": "/orders",
+    "status": 500,
+    "timestamp": "2021-07-26T09:52:02.852+0000"
+}
+
+#결제서비스 재기동
+]root@labs-1603723474:/home/project/pay# mvn spring-boot:run
+
+#주문처리 (정상처리)
+]root@labs-1603723474:/home/project# http localhost:8081/orders name=Guest3 roomType=DeluxNormal
+
+HTTP/1.1 200 
+Content-Type: application/hal+json;charset=UTF-8
+Date: Mon, 26 Jul 2021 09:56:03 GMT
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "order": {
+            "href": "http://localhost:8081/orders/6"
+        },
+        "self": {
+            "href": "http://localhost:8081/orders/6"
+        }
+    },
+    "name: "Guest3",
+    "roomType": "DeluxNormal",
+    "status": "null"
+    "guestCnt": null,
+    "cardNo": null,
+}
+```
+
+* **API Gateway**
+API gateway 를 통해 MSA 진입점을 통일 시킨다.
+```
+# gateway 기동 (8088 포트)
+]root@labs-1603723474:/home/project/gateway# ls
+Dockerfile  cloudbuild.yaml  pom.xml  src  target
+]root@labs-1603723474:/home/project/gateway# mvn spring-boot:run
+
+# api gateway를 통한 호텔 룸 예약 주문
+]root@labs-1603723474:/home/project/# http localhost:8088/orders name=Guest4 roomType=Prime guestCnt=4
+
+HTTP/1.1 200 
+Content-Type: application/hal+json;charset=UTF-8
+Date: Mon, 26 Jul 2021 10:22:45 GMT
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "order": {
+            "href": "http://localhost:8088/orders/7"
+        },
+        "self": {
+            "href": "http://localhost:8088/orders/7"
+        }
+    },
+    "name: "Guest4",
+    "roomType": "Prime",
+    "status": "null"
+    "guestCnt": 4,
+    "cardNo": null,
+}
+
+
+* **비동기식 호출과 Eventual Consistency**
