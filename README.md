@@ -75,8 +75,8 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
 
 **포트넘버 분리**
 
-'''java
-  spring:
+'''JAVA
+spring:
   profiles: default
   cloud:
     gateway:
@@ -99,7 +99,4 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
             - Path= /mypages/**
       globalcors:
         corsConfigurations:
-        
 '''
-
-
