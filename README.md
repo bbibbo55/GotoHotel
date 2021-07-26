@@ -516,6 +516,7 @@ Transfer-Encoding: chunked
 ```
 
 * **API Gateway**
+
 API gateway 를 통해 MSA 진입점을 통일 시킨다.
 ```
 # gateway 기동 (8088 포트)
@@ -546,6 +547,75 @@ Transfer-Encoding: chunked
     "guestCnt": 4,
     "cardNo": null,
 }
-
+```
 
 * **비동기식 호출과 Eventual Consistency**
+
+결제가 이루어진 후에 예약 시스템으로 이를 알려주는 행위는 동기식이 아닌 비동기식으로 처리하여(Pub/Sub)   
+원활한 예약(Reservation) 서비스 처리를 위하여 주문(Order)/결제(Pay) 처리가 블로킹 되지 않도록 한다.
+
+##### 이러한 처리를 위해 결제 승인이 되었다는 도메인 이벤트를 카프카로 Publish 한다.
+```
+package gotohotel;
+
+import javax.persistence.*;
+import org.springframework.beans.BeanUtils;
+
+@Entity
+@Table(name="Payment_table")
+public class Payment {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id;
+    private Long orderId;
+    private Long cardNo;
+    private String status;
+
+    @PostPersist
+    public void onPostPersist(){
+        PaymentApproved paymentApproved = new PaymentApproved();
+        BeanUtils.copyProperties(this, paymentApproved);
+        paymentApproved.publishAfterCommit();
+
+        PaymentCanceled paymentCanceled = new PaymentCanceled();
+        BeanUtils.copyProperties(this, paymentCanceled);
+        paymentCanceled.publishAfterCommit();
+
+    }
+```
+
+##### 예약(reservation)서비스에서는 결제승인 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다.
+
+##### 호텔은 예약 상황을 확인 하고, 최종 예약 상태를 시스템에 등록할것이므로 우선 예약정보를 DB에 받아놓은 후, 이후 처리는 해당 Aggregate 처리한다.
+```
+# (reservation) PolicyHandler.java
+package gotohotel;
+
+import gotohotel.config.kafka.KafkaProcessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PolicyHandler{
+    @Autowired ReservationRepository reservationRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverPaymentApproved_TakeReserve(@Payload PaymentApproved paymentApproved){
+
+        if(paymentApproved.isMe()){
+
+            System.out.println("\n\n##### listener TakeReserve : " + paymentApproved.toJson() + "\n\n");
+            Reservation reservation = new Reservation();
+            reservation.setStatus("Reservation Complete");
+            reservation.setOrderId(paymentApproved.getOrderId());
+            reservationRepository.save(reservation);        
+
+    }
+ 
+ ```
+ 
