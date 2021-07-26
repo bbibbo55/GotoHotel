@@ -619,3 +619,79 @@ public class PolicyHandler{
  
  ```
  
+# 운영
+
+## 컨테이너 이미지 생성 및 배포
+
+**ECR 접속 비밀번호 생성**
+
+```
+aws --region "ap-southeast-2" ecr get-login-password
+```
+
+**ECR 로그인**
+
+```
+docker login --username AWS -p {ECR 접속 비밀번호} 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com
+Login Succeeded
+```
+
+**마이크로서비스 빌드, order/payment/reservation/custormerCenter 각각 실행**
+
+```
+mvn clean package -B
+```
+
+**컨테이너 이미지 생성**
+ - docker build -t 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/order:v1 .
+ - docker build -t 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/pay:v1 .
+ - docker build -t 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/reservation:v1 .
+ - docker build -t 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/customercenter:v1 .
+
+```
+]root@labs-1603723474:/home/project/order# docker build -t 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/order:v1 .
+Sending build context to Docker daemon 59.79 MB
+Step 1/4 : FROM openjdk:8u212-jdk-alpine
+8u212-jdk-alpine: Pulling from library/openjdk
+e7c96db7181b: Pull complete 
+f910a506b6cb: Pull complete 
+c2274a1a0e27: Pull complete 
+Digest: sha256:94792824df2df33402f201713f932b58cb9de94a0cd524164a0f2283343547b3
+Status: Downloaded newer image for openjdk:8u212-jdk-alpine
+ ---> a3562aa0b991
+Step 2/4 : COPY target/*SNAPSHOT.jar app.jar
+ ---> 6c5de7599f8c
+Step 3/4 : EXPOSE 8080
+ ---> Running in 69d162c84a8e
+Removing intermediate container 69d162c84a8e
+ ---> 4549d977d0bd
+Step 4/4 : ENTRYPOINT ["java","-Xmx400M","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar","--spring.profiles.active=docker"]
+ ---> Running in 414d063d1c7a
+Removing intermediate container 414d063d1c7a
+ ---> 436b7f022620
+Successfully built 436b7f022620
+Successfully tagged 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/order:v1
+
+```
+```
+]root@labs-1603723474:/home/project/customerCenter# docker images
+REPOSITORY                                                         TAG                 IMAGE ID            CREATED             SIZE
+879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/customercenter   v1                  177225fe5d84        46 seconds ago      165 MB
+879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/reservation      v1                  539a2d256365        3 minutes ago       165 MB
+879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/pay              v1                  cd7a56d23904        4 minutes ago       165 MB
+879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/order            v1                  436b7f022620        4 minutes ago       165 MB
+openjdk                                                            8u212-jdk-alpine    a3562aa0b991        2 years ago         105 MB
+```
+
+**ECR에 컨테이너 이미지 배포**
+
+ - docker push 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/order:v1
+ - docker push 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/pay:v1
+ - docker push 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/reservation:v1
+ - docker push 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com/customercenter:v1
+
+**ECR 로그인**
+]root@labs-1603723474:/home/project/order# docker login --username AWS -p $(aws ecr get-login-password --region ap-southeast-2) 879772956301.dkr.ecr.ap-southeast-2.amazonaws.com
+Login Succeeded
+
+
