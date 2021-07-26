@@ -9,6 +9,7 @@ AWS_Intensive Coursework 3차수 Personal Project
   - 서비스 시나리오
   - 분석/설계
   - 구현
+    + 포트넘버 
     + DDD의 적용
     + 폴리글랏 퍼시스턴스
     + 폴리글랏 프로그래밍
@@ -75,7 +76,7 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
 
 **포트넘버 분리**
 
-'''JAVA
+```C
 spring:
   profiles: default
   cloud:
@@ -99,4 +100,154 @@ spring:
             - Path= /mypages/**
       globalcors:
         corsConfigurations:
-'''
+```
+**각 서비스 수행**
+
+```
+]root@labs-1603723474:/home/project/order# ls
+Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  target
+]root@labs-1603723474:/home/project/order# mvn spring-boot:run
+
+]root@labs-1603723474:/home/project/pay# ls
+Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  target
+]root@labs-1603723474:/home/project/pay# mvn spring-boot:run
+
+]root@labs-1603723474:/home/project/reservation# ls
+Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  target
+]root@labs-1603723474:/home/project/reservation# mvn spring-boot:run
+
+]root@labs-1603723474:/home/project/customerCenter# ls
+Dockerfile  azure-pipelines.yml  cloudbuild.yaml  kubernetes  pom.xml  src  target
+]root@labs-1603723474:/home/project/customerCenter# mvn spring-boot:run
+
+```
+
+**DDD 적용**
+  - 각 서비스 내에 도출된 핵심 Aggregate Root 객체를 Entity로 선언하였다.
+  - order 마이크로서비스를 예로 들어본다.
+```
+package gotohotel;
+
+import javax.persistence.*;
+import org.springframework.beans.BeanUtils;
+
+import gotohotel.external.Payment;
+
+import java.util.List;
+import java.util.Date;
+
+@Entity
+@Table(name="Order_table")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id;
+    private String orderId;
+    private String name;
+    private String roomType;
+    private Integer guestCnt;
+    private String status;
+    private Long cardNo;
+
+    @PostPersist
+    public void onPostPersist(){
+        Ordered ordered = new Ordered();
+        BeanUtils.copyProperties(this, ordered);
+        ordered.publishAfterCommit();
+
+        //Following code causes dependency to external APIs
+        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
+
+    //    gotohotel.external.Payment payment = new gotohotel.external.Payment();
+        Payment payment = new Payment();
+        payment.setOrderId(this.id);
+        // mappings goes here
+        OrderApplication.applicationContext.getBean(gotohotel.external.PaymentService.class)
+            .processPayment(payment);
+
+    }
+    @PrePersist
+    public void onPrePersist(){
+    }
+    @PreRemove
+    public void onPreRemove(){
+        OrderCanceled orderCanceled = new OrderCanceled();
+        BeanUtils.copyProperties(this, orderCanceled);
+        orderCanceled.publishAfterCommit();
+
+        //Following code causes dependency to external APIs
+        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
+
+        gotohotel.external.Reservation reservation = new gotohotel.external.Reservation();
+        // mappings goes here
+        OrderApplication.applicationContext.getBean(gotohotel.external.ReservationService.class)
+            .cancelReserve(reservation);
+
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getRoomType() {
+        return roomType;
+    }
+
+    public void setRoomType(String roomType) {
+        this.roomType = roomType;
+    }
+
+    public Integer getGuestCnt() {
+        return guestCnt;
+    }
+
+    public void setGuestCnt(Integer guestCnt) {
+        this.guestCnt = guestCnt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Long getCardNo() {
+        return cardNo;
+    }
+
+    public void setCardNo(Long cardNo) {
+        this.cardNo = cardNo;
+    }
+
+}
+
+```
+  - REST API 테스트
+
+```
+# order 서비스 주문처리
+
+```
