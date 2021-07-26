@@ -75,4 +75,29 @@ GotoHetel 예약 시스템에서 요구하는 기능/비기능 요구사항은 �
 
 **포트넘버 분리**
 
+  spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: order
+          uri: http://localhost:8081
+          predicates:
+            - Path=/orders/** 
+        - id: reservation
+          uri: http://localhost:8082
+          predicates:
+            - Path=/reservations/** 
+        - id: pay
+          uri: http://localhost:8083
+          predicates:
+            - Path=/payments/** 
+        - id: customerCenter
+          uri: http://localhost:8084
+          predicates:
+            - Path= /mypages/**
+      globalcors:
+        corsConfigurations:
+        
+
 
